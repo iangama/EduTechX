@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  enrollments Enrollment[]
+  courses     Course[]   @relation("InstructorCourses")
+  payments    Payment[]
+}
+
+model Course {
+  id           String    @id @default(cuid())
+  title        String
+  description  String
+  priceCents   Int       @default(0)
+  published    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  instructor   User      @relation("InstructorCourses", fields: [instructorId], references: [id])
+  instructorId String
+  lessons      Lesson[]
+  enrollments  Enrollment[]
+}
+
+model Lesson {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  order     Int
+  course    Course   @relation(fields: [courseId], references: [id])
+  courseId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Enrollment {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  course    Course   @relation(fields: [courseId], references: [id])
+  courseId  String
+  status    EnrollmentStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payment   Payment?
+  @@unique([userId, courseId])
+}
+
+model Payment {
+  id           String   @id @default(cuid())
+  user         User     @relation(fields: [userId], references: [id])
+  userId       String
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id])
+  enrollmentId String    @unique
+  amountCents  Int
+  currency     String    @default("BRL")
+  status       PaymentStatus @default(STARTED)
+  providerRef  String?
+  createdAt    DateTime  @default(now())
+}
+
+enum Role {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+}
+
+enum EnrollmentStatus {
+  PENDING
+  ACTIVE
+  CANCELLED
+}
+
+enum PaymentStatus {
+  STARTED
+  APPROVED
+  DECLINED
+}
